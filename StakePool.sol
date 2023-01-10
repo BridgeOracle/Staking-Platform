@@ -642,9 +642,7 @@ contract StakePool is Ownable,ReentrancyGuard {
     uint256 constant max = 200000000000000000000000; 
     uint256 constant year = 31536000; 
     uint256 constant day = 86400;  
-    //下面两个参数用于测试；分钟==天
-    // uint256 constant year = 21900; 
-    // uint256 constant day = 60; 
+    
     uint256 public totalAmount = 0; 
     mapping (address => uint256) addressTotalAmount;
     mapping (address => StakeInfo[]) addressDepositList;
@@ -736,7 +734,6 @@ contract StakePool is Ownable,ReentrancyGuard {
     }
 
     function _calcReward(StakeInfo storage _info, uint256 _time)internal view returns (uint256){ 
-        //计算方式：时间/全年 * 金额 * apr
         uint256 _amount = 0;
         if(_info.unlockTime <= _info.lastClaimedTime){
             _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).div(year).mul(aprCfg[0]);
@@ -746,7 +743,6 @@ contract StakePool is Ownable,ReentrancyGuard {
         }else{
             _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).div(year).mul(aprCfg[_info.lockDays]);
         }
-        //去掉apr中扩大的1000倍
         _amount = _amount.div(1000);
         return _amount; 
     }
@@ -783,8 +779,7 @@ contract StakePool is Ownable,ReentrancyGuard {
         }  
         return (_info.amount,_info.unlockTime,_info.lockDays,_pendingReward,_info.withdrawn);
     }
-
-    //取回所有剩余奖励
+ 
     function shutdown() public onlyOwner {
         uint256 bal = token.balanceOf(address(this));
         uint myToken = bal.sub(totalAmount);
