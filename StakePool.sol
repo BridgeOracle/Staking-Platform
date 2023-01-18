@@ -638,10 +638,10 @@ contract StakePool is Ownable,ReentrancyGuard {
     }
 
     IERC20 public token;
-    uint256 constant min = 50000000000000000000000;
-    uint256 constant max = 200000000000000000000000; 
-    uint256 constant year = 31536000; 
-    uint256 constant day = 86400;  
+    uint256 constant min = 50_000 * 1e18;
+    uint256 constant max = 200_000 * 1e18; 
+    uint256 constant year = 31_536_000; 
+    uint256 constant day = 86_400;  
     
     uint256 public totalAmount = 0; 
     mapping (address => uint256) addressTotalAmount;
@@ -733,24 +733,24 @@ contract StakePool is Ownable,ReentrancyGuard {
         emit Withdraw(msg.sender, _sid, _amount);
     }
 
-    function _calcReward(StakeInfo storage _info, uint256 _time)internal view returns (uint256){ 
+    function _calcReward(StakeInfo memory _info, uint256 _time)internal view returns (uint256){ 
         uint256 _amount = 0;
         if(_info.unlockTime <= _info.lastClaimedTime){
-            _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).div(year).mul(aprCfg[0]);
+            _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).mul(aprCfg[0]).div(year);
         }else if(_time>_info.unlockTime){
-            _amount = _info.amount.mul(_info.unlockTime.sub(_info.lastClaimedTime)).div(year).mul(aprCfg[_info.lockDays]);
-            _amount = _amount.add(_info.amount.mul(_time.sub(_info.unlockTime)).div(year).mul(aprCfg[0]));
+            _amount = _info.amount.mul(_info.unlockTime.sub(_info.lastClaimedTime)).mul(aprCfg[_info.lockDays]).div(year);
+            _amount = _amount.add(_info.amount.mul(_time.sub(_info.unlockTime)).mul(aprCfg[0]).div(year));
         }else{
-            _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).div(year).mul(aprCfg[_info.lockDays]);
+            _amount = _info.amount.mul(_time.sub(_info.lastClaimedTime)).mul(aprCfg[_info.lockDays]).div(year);
         }
         _amount = _amount.div(1000);
         return _amount; 
     }
   
     function emergencyWithdraw(uint256 _sid) external nonReentrant {
-        StakeInfo[] storage list = addressDepositList[msg.sender];
+        StakeInfo[] memory list = addressDepositList[msg.sender];
         require(_sid < list.length, "invalid stake item id");
-        StakeInfo storage info = list[_sid];
+        StakeInfo memory info = list[_sid];
         require(info.withdrawn == 0,"Repeat withdraw."); 
         uint256 _amount = info.amount; 
         info.withdrawn = 1; 
@@ -769,32 +769,19 @@ contract StakePool is Ownable,ReentrancyGuard {
     }
     
     function stakeItem(address _user, uint256 _sid) external view returns (uint256 amount, uint256 unlockTime, uint128 lockDays, uint256 pendingReward, uint8 withdrawn){ 
-        StakeInfo[] storage list = addressDepositList[_user];
+        StakeInfo[] memory list = addressDepositList[_user];
         require(_sid<list.length,"_sid out of range.");
-        StakeInfo storage _info = list[_sid]; 
+        StakeInfo memory _info = list[_sid]; 
         uint256 _time = now;
         uint256 _pendingReward = 0;
         if(_info.withdrawn !=1){
             _pendingReward = _calcReward(_info, _time); 
         }  
         return (_info.amount,_info.unlockTime,_info.lockDays,_pendingReward,_info.withdrawn);
-    }
- 
-    function shutdown() public onlyOwner {
-        uint256 bal = token.balanceOf(address(this));
-        uint myToken = bal.sub(totalAmount);
-        if (myToken < 0) {
-            myToken = 0;
-        }
-        token.safeTransfer(address(msg.sender), myToken);
-    }
+    } 
 
     function getRewardBalance() external view returns (uint256){ 
         uint256 bal = token.balanceOf(address(this));
-        uint myToken = bal.sub(totalAmount);
-        if (myToken < 0) {
-            myToken = 0;
-        }
-        return myToken;
+        return bal.sub(totalAmount);
     } 
 }
